@@ -10,11 +10,19 @@ import ar.ive.spec.core.IveBusinessException;
  */
 public class UnauthorizedException extends IveBusinessException {
     private static final long serialVersionUID = -5552957716434596102L;
-	private final String errorRef;
+    /** La clave del catalogo para esta familia. Ver IveBusinessException. */
+    public static final String REF = "401_Unauthorized";
+
+    private final String errorRef;
 
     public UnauthorizedException(String errorRef, String message) {
         super(message);
         this.errorRef = errorRef;
+    }
+
+    /** Con el ref canonico de la familia. */
+    public UnauthorizedException(String message) {
+        this(REF, message);
     }
 
     @Override

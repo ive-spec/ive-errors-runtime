@@ -2,21 +2,21 @@ package ar.ive.spec.errors;
 
 import ar.ive.spec.core.IveBusinessException;
 
-/** Familia HTTP 503. Ej.: "503_ServiceUnavailable". */
-public class ServiceUnavailableException extends IveBusinessException {
-    private static final long serialVersionUID = 407424173808546728L;
+/** Familia HTTP 451. */
+public class UnavailableForLegalReasonsException extends IveBusinessException {
+    private static final long serialVersionUID = 1L;
     /** La clave del catalogo para esta familia. Ver IveBusinessException. */
-    public static final String REF = "503_ServiceUnavailable";
+    public static final String REF = "451_UnavailableForLegalReasons";
 
     private final String errorRef;
 
-    public ServiceUnavailableException(String errorRef, String message) {
+    public UnavailableForLegalReasonsException(String errorRef, String message) {
         super(message);
         this.errorRef = errorRef;
     }
 
     /** Con el ref canonico de la familia. */
-    public ServiceUnavailableException(String message) {
+    public UnavailableForLegalReasonsException(String message) {
         this(REF, message);
     }
 

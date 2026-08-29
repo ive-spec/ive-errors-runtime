@@ -29,10 +29,27 @@
 	<properties>
 		<java.version>21</java.version>
 	</properties>
+	<!--
+		SIN DEPENDENCIAS, A PROPOSITO.
+
+		Las 17 clases de esta libreria son POJOs: ninguna importa
+		`org.springframework`. Tenia `spring-boot-starter-webmvc`, y eso
+		lo heredaba TODO SDK generado, que no tiene por que arrastrar el
+		stack web para declarar sus errores de negocio.
+
+		Del parent se sigue heredando, pero solo por la gestion de
+		versiones y la configuracion del compilador.
+	-->
 	<dependencies>
+		<!--
+			Jackson y nada mas. `fromBody` tiene que LEER el cuerpo
+			`DetailedErrorView` que devuelve el servidor: sin parsearlo,
+			todo lo que dice sobre que campo fallo llega como un String
+			suelto. La version la maneja el parent.
+		-->
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webmvc</artifactId>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
 		</dependency>
 	</dependencies>
 
