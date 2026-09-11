@@ -45,6 +45,29 @@ final class DetailedErrorBody {
         return message != null && message.isTextual() ? message.asText() : rawBody;
     }
 
+    /** The body's {@code errorRef}, or null. */
+    static String errorRefOf(String rawBody) {
+        return text(parse(rawBody), "errorRef");
+    }
+
+    /**
+     * The cause: {@code messages[0].code}, where the catalog's error View
+     * puts it. Null when the body has none -- it is not guessed.
+     */
+    static String conditionOf(String rawBody) {
+        JsonNode root = parse(rawBody);
+        JsonNode messages = root == null ? null : root.get("messages");
+        if (messages == null || !messages.isArray() || messages.isEmpty()) return null;
+        String code = text(messages.get(0), "code");
+        return code == null || code.isBlank() ? null : code;
+    }
+
+    /** What the cause expects, as the other side wrote it; null when absent or blank. */
+    static String expectsOf(String rawBody) {
+        String expects = text(parse(rawBody), "expects");
+        return expects == null || expects.isBlank() ? null : expects;
+    }
+
     static List<BadRequestException.Message> messagesOf(String rawBody) {
         List<BadRequestException.Message> result = new ArrayList<>();
         JsonNode root = parse(rawBody);

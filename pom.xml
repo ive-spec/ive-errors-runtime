@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>ive.spec</groupId>
 	<artifactId>ive-errors-runtime</artifactId>
-	<version>1.0.0</version>
+	<version>1.0.4</version>
 	<name/>
 	<description/>
 	<url/>
@@ -28,6 +28,14 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<!--
+			The tests' JUnit and surefire, pinned through the parent's own
+			properties: the parent manages JUnit 6 and surefire 3.5 through
+			a BOM, and pinning only the dependency would mix a 5.x Jupiter
+			with a 6.x platform. Same versions as ive-data-protection.
+		-->
+		<junit-jupiter.version>5.10.2</junit-jupiter.version>
+		<maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
 	</properties>
 	<!--
 		SIN DEPENDENCIAS, A PROPOSITO.
@@ -50,6 +58,12 @@
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
+		</dependency>
+		<!-- Test only: the guide, the body writer and the reader (src/test). -->
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 
