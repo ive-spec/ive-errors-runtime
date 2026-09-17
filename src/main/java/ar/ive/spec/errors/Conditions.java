@@ -36,6 +36,7 @@ public final class Conditions {
     public static final String RESOURCE_NOT_PERMITTED = "resourceNotPermitted";
     public static final String RESOURCE_STATE_CHANGED = "resourceStateChanged";
     public static final String SERVICE_OVERLOADED = "serviceOverloaded";
+    public static final String TRACE_CONTEXT_MISSING = "traceContextMissing";
     public static final String UNDER_MAINTENANCE = "underMaintenance";
     public static final String UNEXPECTED_SERVER_ERROR = "unexpectedServerError";
     public static final String UNSUPPORTED_CONTENT_TYPE = "unsupportedContentType";

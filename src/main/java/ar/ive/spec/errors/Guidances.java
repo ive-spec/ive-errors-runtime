@@ -20,6 +20,7 @@ public final class Guidances {
 
     /** The causes of the catalog, one per failure error and cause. */
     public static final List<Guidance> CATALOG = List.of(
+        new Guidance("400_BadRequest", 400, "traceContextMissing", "The request carries no trace identifier", "Send the trace you are already inside of. If there is none, the caller is the start of the chain and this operation is not: it declares `traceability` on its input, so the value has to come from whoever calls."),
         new Guidance("401_Unauthorized", 401, "credentialExpired", "The authentication credential has expired", "Renew the credential and retry the same message."),
         new Guidance("401_Unauthorized", 401, "credentialInvalid", "The authentication credential is not valid", "Authenticate from scratch. The credential is not recoverable, so renewing it leads nowhere."),
         new Guidance("401_Unauthorized", 401, "credentialMissing", "The request carries no authentication credential", "Authenticate and retry the same message."),
