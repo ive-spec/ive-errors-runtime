@@ -27,9 +27,11 @@ public final class Conditions {
     public static final String PERIOD_QUOTA_EXHAUSTED = "periodQuotaExhausted";
     public static final String PERMISSION_MISSING = "permissionMissing";
     public static final String RATE_LIMIT_EXCEEDED = "rateLimitExceeded";
+    public static final String REQUEST_NOT_COMPLETED = "requestNotCompleted";
     public static final String REQUEST_STILL_IN_PROGRESS = "requestStillInProgress";
     public static final String RESOURCE_ALREADY_EXISTS = "resourceAlreadyExists";
     public static final String RESOURCE_ALREADY_PRESENT = "resourceAlreadyPresent";
+    public static final String RESOURCE_GONE = "resourceGone";
     public static final String RESOURCE_IMMUTABLE = "resourceImmutable";
     public static final String RESOURCE_IN_USE = "resourceInUse";
     public static final String RESOURCE_NOT_FOUND = "resourceNotFound";

@@ -71,7 +71,7 @@ class GuidanceTest {
 
     @Test
     void every_cause_of_the_catalog() {
-        assertEquals(30, Guidances.CATALOG.size());
+        assertEquals(32, Guidances.CATALOG.size());
     }
 
     @Test
