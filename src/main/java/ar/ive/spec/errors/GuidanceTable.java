@@ -125,7 +125,35 @@ public final class GuidanceTable implements Iterable<Guidance> {
 
     /** {@link #errorFor(String, Integer)} with any code. */
     public IveBusinessException errorFor(String condition) {
-        return errorFor(condition, null);
+        return errorFor(condition, (Integer) null);
+    }
+
+    /**
+     * The error of a declared cause WITH ITS FIELD ERRORS: a 422 that says
+     * the input is not valid has to say WHICH field and why.
+     *
+     * <p>Only a family with {@code DetailedErrorView} (400 and 422) carries
+     * them. Field errors for any other cause would be dropped without a
+     * trace, so that is a programming error too
+     * ({@link IllegalArgumentException}). Without field errors it is
+     * {@link #errorFor(String, Integer)}.</p>
+     */
+    public IveBusinessException errorFor(String condition, Integer code, Map<String, List<FieldProblem>> fieldErrors) {
+        if (fieldErrors == null || fieldErrors.isEmpty()) return errorFor(condition, code);
+        Guidance row = byCondition(condition, code);
+        if (row == null) return errorFor(condition, code);   // the "not declared" error, with the list
+        int status = row.code() != null ? row.code() : 500;
+        if (!IveErrorFactory.carriesFieldErrors(status)) {
+            throw new IllegalArgumentException("The cause '" + condition + "' is a " + row.errorRef()
+                + ", whose family carries no per-field detail (the catalog does not declare it with DetailedErrorView):"
+                + " the detail would be lost.");
+        }
+        return IveErrorFactory.create(status, row.errorRef(), row.message(), fieldErrors).withCondition(row.condition());
+    }
+
+    /** {@link #errorFor(String, Integer, Map)} with any code. */
+    public IveBusinessException errorFor(String condition, Map<String, List<FieldProblem>> fieldErrors) {
+        return errorFor(condition, null, fieldErrors);
     }
 
     /** Whether the cause is declared for that error. */

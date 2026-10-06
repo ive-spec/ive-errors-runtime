@@ -3,7 +3,7 @@ package ar.ive.spec.errors;
 /**
  * The cause keys the catalog declares, as constants.
  *
- * <p>A cause key is what travels in {@code messages[0].code} and what
+ * <p>A cause key is what travels as the error body's {@code key} and what
  * {@link ar.ive.spec.core.IveBusinessException#condition()} holds. Writing
  * the string by hand in an {@code if} fails silently when the catalog
  * renames it; a constant does not compile. Among them are the platform
@@ -19,6 +19,7 @@ public final class Conditions {
     public static final String DEPENDENCY_UNAVAILABLE = "dependencyUnavailable";
     public static final String IDEMPOTENCY_KEY_EXPIRED = "idempotencyKeyExpired";
     public static final String IDEMPOTENCY_KEY_REUSED = "idempotencyKeyReused";
+    public static final String INVALID_RESOURCE_STATE = "invalidResourceState";
     public static final String INVALID_UPSTREAM_RESPONSE = "invalidUpstreamResponse";
     public static final String LEGALLY_RESTRICTED = "legallyRestricted";
     public static final String METHOD_NOT_SUPPORTED = "methodNotSupported";

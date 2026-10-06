@@ -4,20 +4,29 @@ import ar.ive.spec.core.IveBusinessException;
 import ar.ive.spec.core.IveTransportException;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
- * THE BODY OF AN ERROR RESPONSE: writing it, and reading back what the
- * exceptions carry.
+ * THE BODY OF AN ERROR RESPONSE: writing it, and reading back what it says.
  *
- * <p>The shape is the catalog's error View -- {@code message},
- * {@code errorRef}, {@code messages[]{code, message, severity}},
- * {@code fieldErrors} -- plus {@code expects}, what the cause of the error
- * expects from whoever receives it. The cause travels in
- * {@code messages[0].code}, which is exactly where the generated clients
- * read it, and {@code expects} travels ALWAYS when the cause has one: any
- * client, or an AI agent, gets it without a table of its own.</p>
+ * <p>The shape is the catalog's error Views: {@code ErrorView}
+ * ({@code key}, {@code message}, {@code expects}) and, for the errors about
+ * the data received (400 and 422), {@code DetailedErrorView}, which adds
+ * {@code fieldErrors} ({@code {<field>: [{key, message, params}]}}).</p>
+ *
+ * <ul>
+ *   <li>{@code key} is the cause of the error. Absent when the cause is
+ *       not known: guessing it by the code would pick one of several causes
+ *       that expect different things.</li>
+ *   <li>{@code expects} is what the cause expects from whoever receives the
+ *       error. It travels ALWAYS when the cause has one: any client, or an
+ *       AI agent, gets it without a table of its own.</li>
+ * </ul>
+ *
+ * <p>WHICH ERROR it is does not travel in the body: the transport says it
+ * (the HTTP status). And an error whose entry declares no View answers
+ * with no body at all -- that is the writer's decision, which knows the
+ * specification; this class writes the body of one that has a View.</p>
  *
  * <p>Framework-agnostic on purpose: it returns a {@code Map} (any JSON
  * writer serializes it) and a status; the adapter to a web framework
@@ -45,36 +54,25 @@ public final class ErrorBody {
         if (expects == null) {
             expects = (guidance != null ? guidance : Guidances.GUIDANCE).expectsOf(error);
         }
-        Map<String, Object> body = of(error.errorRef(), error.getMessage(), error.condition(), expects);
+        Map<String, Object> body = of(error.condition(), error.getMessage(), expects);
         Map<String, ?> fieldErrors = fieldErrorsOf(error);
         if (!fieldErrors.isEmpty()) {
-            // Same place as in DetailedErrorView: after `messages`, before `expects`.
-            Object carried = body.remove("expects");
             body.put("fieldErrors", fieldErrors);
-            if (carried != null) body.put("expects", carried);
         }
         return body;
     }
 
     /**
-     * The body for a failure that is not an {@link IveBusinessException} but
-     * does carry a catalog {@code errorRef} (e.g. a flow's
-     * {@code FlowFailureException}). {@code condition} and {@code expects}
-     * may be null: then neither {@code messages} nor {@code expects} is
-     * written -- guessing a cause by its code would pick one of several that
-     * expect different things.
+     * The body of a failure that is not an {@link IveBusinessException} (e.g.
+     * a flow's {@code FlowFailureException}). {@code key} and {@code expects}
+     * may be null: then they are not written.
      */
-    public static Map<String, Object> of(String errorRef, String message, String condition, String expects) {
+    public static Map<String, Object> of(String key, String message, String expects) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("message", message);
-        body.put("errorRef", errorRef);
-        if (condition != null && !condition.isBlank()) {
-            Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("code", condition);
-            entry.put("message", message);
-            entry.put("severity", "ERROR");
-            body.put("messages", List.of(entry));
+        if (key != null && !key.isBlank()) {
+            body.put("key", key);
         }
+        body.put("message", message);
         if (expects != null && !expects.isBlank()) {
             body.put("expects", expects);
         }
@@ -91,11 +89,10 @@ public final class ErrorBody {
         return error.code() > 0 ? error.code() : 502;
     }
 
-    /** The body of a technical failure: {@code {message, errorRef: "<status>_Upstream"}}. */
+    /** The body of a technical failure: {@code {message}} only -- it has no cause. */
     public static Map<String, Object> of(IveTransportException error) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("message", error.getMessage());
-        body.put("errorRef", statusOf(error) + "_Upstream");
         return body;
     }
 
@@ -106,14 +103,9 @@ public final class ErrorBody {
         return DetailedErrorBody.messageOf(rawBody);
     }
 
-    /** The {@code errorRef} of a raw error body, or {@code null}. */
-    public static String errorRefOf(String rawBody) {
-        return DetailedErrorBody.errorRefOf(rawBody);
-    }
-
-    /** The cause of a raw error body ({@code messages[0].code}), or {@code null}. */
-    public static String conditionOf(String rawBody) {
-        return DetailedErrorBody.conditionOf(rawBody);
+    /** The cause of a raw error body ({@code key}), or {@code null}: it is not guessed. */
+    public static String keyOf(String rawBody) {
+        return DetailedErrorBody.keyOf(rawBody);
     }
 
     /** The {@code expects} of a raw error body, or {@code null}. */
@@ -125,18 +117,25 @@ public final class ErrorBody {
         Map<String, Object> result = new LinkedHashMap<>();
         if (error instanceof BadRequestException bad) {
             bad.fieldErrors().forEach((field, errors) -> result.put(field,
-                errors.stream().map(e -> fieldError(e.code(), e.message(), e.params())).toList()));
+                errors.stream().map(e -> fieldError(e.key(), e.message(), e.params())).toList()));
         } else if (error instanceof UnprocessableException unprocessable) {
             unprocessable.fieldErrors().forEach((field, errors) -> result.put(field,
-                errors.stream().map(e -> fieldError(e.code(), e.message(), e.params())).toList()));
+                errors.stream().map(e -> fieldError(e.key(), e.message(), e.params())).toList()));
         }
         return result;
     }
 
-    private static Map<String, Object> fieldError(String code, String message, Map<String, Object> params) {
+    /**
+     * One problem of one field ({@code ErrorMessageView}): its key, its text,
+     * its params. The View requires a message: a problem raised without one
+     * (its key says it all, see {@link FieldProblem}) carries its key there.
+     */
+    private static Map<String, Object> fieldError(String key, String message, Map<String, Object> params) {
         Map<String, Object> entry = new LinkedHashMap<>();
-        entry.put("code", code);
-        entry.put("message", message);
+        if (key != null && !key.isBlank()) {
+            entry.put("key", key);
+        }
+        entry.put("message", message != null ? message : key);
         entry.put("params", params == null ? Map.of() : params);
         return entry;
     }

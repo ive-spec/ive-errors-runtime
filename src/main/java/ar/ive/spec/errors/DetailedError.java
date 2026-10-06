@@ -8,8 +8,12 @@ import java.util.Map;
  * error body. Generated from the platform catalog.
  */
 public record DetailedError(
-    /** Errores que no corresponden a un campo en particular. */
-    List<ErrorMessage> messages,
-    /** Cada campo con la lista de sus errores. */
+    /** The key of the cause. */
+    String key,
+    /** The message of the cause. */
+    String message,
+    /** What whoever receives the error has to do. */
+    String expects,
+    /** Each field with the list of its problems. */
     Map<String, List<ErrorMessage>> fieldErrors
 ) {}

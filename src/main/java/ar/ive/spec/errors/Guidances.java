@@ -3,6 +3,7 @@ package ar.ive.spec.errors;
 import ar.ive.spec.core.IveBusinessException;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * THE GUIDE OF THE CATALOG'S CAUSES, and the guide of this process.
@@ -34,6 +35,7 @@ public final class Guidances {
         new Guidance("408_RequestTimeout", 408, "requestNotCompleted", "The request did not complete within the time the service waits", "Send it again. It may not have been processed: with an idempotency key, sending it again is safe."),
         new Guidance("409_Conflict", 409, "idempotencyKeyExpired", "The idempotency key has expired", "Retry with a new idempotency key."),
         new Guidance("409_Conflict", 409, "idempotencyKeyReused", "The idempotency key was already used with a different payload", "Correct the call: either the payload changed while the key stayed the same, or the key belongs to another request."),
+        new Guidance("409_Conflict", 409, "invalidResourceState", "The resource is not in a state that allows this operation", "Read the resource and do what its current state allows; the same message will keep failing until its state changes."),
         new Guidance("409_Conflict", 409, "requestStillInProgress", "The original request is still being processed", "Retry the same message after the indicated time."),
         new Guidance("409_Conflict", 409, "resourceAlreadyExists", "A resource with the same natural key already exists", "Work with the existing resource, or send a different natural key."),
         new Guidance("409_Conflict", 409, "resourceImmutable", "The resource is final and can no longer be changed or removed", "Do not retry: compensate it with a reversing operation instead (for example, a reversing entry for a posted accounting entry)."),
@@ -77,5 +79,15 @@ public final class Guidances {
     /** The error of a declared cause of {@link #GUIDANCE}, of that code. */
     public static IveBusinessException errorFor(String condition, Integer code) {
         return GUIDANCE.errorFor(condition, code);
+    }
+
+    /** The error of a declared cause of {@link #GUIDANCE}, with its field errors (see {@link GuidanceTable#errorFor(String, Integer, Map)}). */
+    public static IveBusinessException errorFor(String condition, Map<String, List<FieldProblem>> fieldErrors) {
+        return GUIDANCE.errorFor(condition, fieldErrors);
+    }
+
+    /** The same, of that code. */
+    public static IveBusinessException errorFor(String condition, Integer code, Map<String, List<FieldProblem>> fieldErrors) {
+        return GUIDANCE.errorFor(condition, code, fieldErrors);
     }
 }

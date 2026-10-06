@@ -71,7 +71,7 @@ class GuidanceTest {
 
     @Test
     void every_cause_of_the_catalog() {
-        assertEquals(32, Guidances.CATALOG.size());
+        assertEquals(33, Guidances.CATALOG.size());
     }
 
     @Test
@@ -141,22 +141,62 @@ class GuidanceTest {
         assertThrows(IllegalArgumentException.class, () -> ownTable().errorFor("nobodySaidThis"));
     }
 
+    private static final Guidance INVALID = new Guidance("422_UnprocessableContent", 422, "loadRejected", "The catalog is not valid", "Fix it.");
+    private static final Map<String, List<FieldProblem>> FIELDS =
+        Map.of("steps[0]", List.of(new FieldProblem("notOfThisStep", null, Map.of("step", "topology"))));
+
+    @Test
+    void a_cause_of_a_detailed_family_carries_its_field_errors() {
+        GuidanceTable table = ownTable();
+        table.register(INVALID);
+        for (IveBusinessException e : List.of(table.errorFor("loadRejected", FIELDS), table.errorFor("loadRejected", 422, FIELDS))) {
+            UnprocessableException u = assertInstanceOf(UnprocessableException.class, e);
+            assertEquals("The catalog is not valid", u.getMessage());
+            assertEquals("loadRejected", u.condition());
+            assertEquals(List.of(new UnprocessableException.FieldError("notOfThisStep", null, Map.of("step", "topology"))),
+                u.fieldErrors().get("steps[0]"));
+            @SuppressWarnings("unchecked")
+            Map<String, List<Map<String, Object>>> body = (Map<String, List<Map<String, Object>>>) ErrorBody.of(u).get("fieldErrors");
+            assertEquals("notOfThisStep", body.get("steps[0]").get(0).get("key"));
+            assertEquals("notOfThisStep", body.get("steps[0]").get(0).get("message"), "a problem without a text carries its key as its message");
+        }
+    }
+
+    @Test
+    void field_errors_for_a_family_without_them_are_not_lost_in_silence() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+            () -> ownTable().errorFor("seatTaken", FIELDS));
+        assertTrue(e.getMessage().contains("seatTaken") && e.getMessage().contains("DetailedErrorView"), e.getMessage());
+    }
+
+    @Test
+    void no_field_errors_is_the_plain_error() {
+        assertInstanceOf(ConflictException.class, ownTable().errorFor("seatTaken", Map.of()));
+    }
+
     // --- the body --------------------------------------------------------------
 
     @Test
-    void with_a_cause_the_body_carries_messages_and_expects() {
+    void with_a_cause_the_body_carries_its_key_and_expects() {
         Guidance row = catalogRowWithExpects();
         IveBusinessException e = errorOf(row, "said");
         Map<String, Object> body = ErrorBody.of(e);
-        assertEquals(row.errorRef(), body.get("errorRef"));
+        assertEquals(List.of("key", "message", "expects"), List.copyOf(body.keySet()), "ErrorView's order");
+        assertEquals(row.condition(), body.get("key"));
         assertEquals("said", body.get("message"));
-        assertEquals(List.of(Map.of("code", row.condition(), "message", "said", "severity", "ERROR")), body.get("messages"));
         assertEquals(row.expects(), body.get("expects"));
     }
 
     @Test
-    void without_a_cause_neither() {
-        assertEquals(Map.of("message", "Pet does not exist", "errorRef", "404_NotFound"),
+    void the_body_says_nothing_of_which_error_it_is() {
+        Map<String, Object> body = ErrorBody.of(errorOf(catalogRowWithExpects(), "said"));
+        assertFalse(body.containsKey("errorRef"), body.toString());
+        assertFalse(body.containsKey("messages"), body.toString());
+    }
+
+    @Test
+    void without_a_cause_only_the_message() {
+        assertEquals(Map.of("message", "Pet does not exist"),
             ErrorBody.of(new NotFoundException("Pet does not exist")));
     }
 
@@ -165,23 +205,33 @@ class GuidanceTest {
         GuidanceTable table = new GuidanceTable();
         table.register(OWN);
         Map<String, Object> body = ErrorBody.of(new ConflictException("m").withCondition("seatTaken"), table);
+        assertEquals("seatTaken", body.get("key"));
         assertEquals("Pick another seat.", body.get("expects"));
     }
 
     @Test
     void field_errors() {
-        BadRequestException e = new BadRequestException(BadRequestException.REF, "bad", List.of(),
-            Map.of("key", List.of(new BadRequestException.FieldError("MIN", "short", Map.of("min", 8)))));
-        assertEquals(Map.of("key", List.of(Map.of("code", "MIN", "message", "short", "params", Map.of("min", 8)))),
-            ErrorBody.of(e).get("fieldErrors"));
+        BadRequestException e = new BadRequestException(BadRequestException.REF, "bad",
+            Map.of("name", List.of(new BadRequestException.FieldError("MIN", "short", Map.of("min", 8)))));
+        Map<String, Object> body = ErrorBody.of(e);
+        assertEquals(Map.of("name", List.of(Map.of("key", "MIN", "message", "short", "params", Map.of("min", 8)))),
+            body.get("fieldErrors"));
+        assertEquals(List.of("message", "fieldErrors"), List.copyOf(body.keySet()), "DetailedErrorView's order");
     }
 
     @Test
     void transport() {
         IveTransportException down = new IveTransportException(0, "down");
         assertEquals(502, ErrorBody.statusOf(down));
-        assertEquals(Map.of("message", "down", "errorRef", "502_Upstream"), ErrorBody.of(down));
+        assertEquals(Map.of("message", "down"), ErrorBody.of(down));
         assertEquals(504, ErrorBody.statusOf(new IveTransportException(504, "late")));
+    }
+
+    @Test
+    void a_failure_that_is_not_a_business_error() {
+        assertEquals(Map.of("message", "it broke"), ErrorBody.of(null, "it broke", null));
+        assertEquals(List.of("key", "message", "expects"),
+            List.copyOf(ErrorBody.of("seatTaken", "taken", "Pick another seat.").keySet()));
     }
 
     // --- reading it back ---------------------------------------------------------
@@ -195,13 +245,14 @@ class GuidanceTest {
         assertEquals("taken", received.getMessage());
         assertEquals("seatTaken", received.condition());
         assertEquals("Pick another seat.", received.expects());
+        assertEquals("seatTaken", ErrorBody.keyOf(raw));
         assertEquals("Pick another seat.", ErrorBody.expectsOf(raw));
     }
 
     @Test
     void without_expects_in_the_body_the_guide_answers() {
         Guidance row = catalogRowWithExpects();
-        String raw = "{\"message\": \"x\", \"errorRef\": \"" + row.errorRef() + "\", \"messages\": [{\"code\": \"" + row.condition() + "\"}]}";
+        String raw = "{\"key\": \"" + row.condition() + "\", \"message\": \"x\"}";
         IveBusinessException e = IveErrorFactory.fromResponse(row.code(), null, raw);
         assertEquals(row.condition(), e.condition());
         assertNull(e.carriedExpects());
@@ -209,12 +260,31 @@ class GuidanceTest {
     }
 
     @Test
+    void the_error_comes_from_the_status_not_from_the_body() {
+        Guidance row = catalogRowWithExpects();
+        String raw = "{\"errorRef\": \"409_Conflict\", \"key\": \"" + row.condition() + "\", \"message\": \"x\"}";
+        IveBusinessException e = assertInstanceOf(IveBusinessException.class, IveErrorFactory.errorFromResponse(row.code(), raw));
+        assertEquals(row.code(), e.code());
+        assertEquals(row.errorRef(), e.errorRef(), "the guide names the error of a known cause of that code");
+    }
+
+    @Test
     void the_rich_form_keeps_its_detail() {
-        String raw = "{\"message\": \"bad\", \"messages\": [{\"code\": \"tooShort\"}], \"fieldErrors\": {\"key\": [{\"code\": \"MIN\", \"message\": \"short\"}]}}";
+        String raw = "{\"key\": \"tooShort\", \"message\": \"bad\", \"fieldErrors\": {\"name\": [{\"key\": \"MIN\", \"message\": \"short\", \"params\": {\"min\": 8}}]}}";
         BadRequestException e = assertInstanceOf(BadRequestException.class, IveErrorFactory.fromResponse(400, null, raw));
         assertEquals(BadRequestException.REF, e.errorRef());
         assertEquals("tooShort", e.condition());
-        assertEquals(1, e.fieldErrors().get("key").size());
+        assertEquals(List.of(new BadRequestException.FieldError("MIN", "short", Map.of("min", 8))), e.fieldErrors().get("name"));
+    }
+
+    @Test
+    void an_empty_body_is_the_error_of_the_status() {
+        NotFoundException e = assertInstanceOf(NotFoundException.class, IveErrorFactory.fromResponse(404, null, ""));
+        assertEquals("Not Found", e.getMessage());
+        assertNull(e.condition());
+        UnprocessableException u = assertInstanceOf(UnprocessableException.class, IveErrorFactory.errorFromResponse(422, null));
+        assertEquals("Unprocessable Content", u.getMessage());
+        assertTrue(u.fieldErrors().isEmpty());
     }
 
     @Test

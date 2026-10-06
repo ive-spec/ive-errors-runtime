@@ -7,56 +7,48 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Familia HTTP 422 - forma RICA (DetailedErrorView), no la simple que
- * tenía antes - confirmado contra el catálogo real
- * (platform-errors-and-views.yaml): 422_UnprocessableContent apunta a
- * DetailedErrorView, igual que 400 - son los DOS únicos códigos con
- * esta forma, no solo 400 como decía un comentario desactualizado de
- * ValidationException.
+ * Family HTTP 422 - the RICH form (DetailedErrorView), like 400: the
+ * catalog declares both with that View, and they are the only two. The
+ * message meets the contract and the business rejects it anyway; its
+ * {@code fieldErrors} say which field the rejection is about.
  */
 public class UnprocessableException extends IveBusinessException {
-    private static final long serialVersionUID = 1L;
-    /** La clave del catalogo para esta familia. Ver IveBusinessException. */
+    private static final long serialVersionUID = 2L;
+    /** The catalog key of this family. See IveBusinessException. */
     public static final String REF = "422_UnprocessableContent";
 
     private final String errorRef;
-    private final List<Message> messages;
     private final Map<String, List<FieldError>> fieldErrors;
 
-    public UnprocessableException(String errorRef, String message, List<Message> messages, Map<String, List<FieldError>> fieldErrors) {
+    public UnprocessableException(String errorRef, String message, Map<String, List<FieldError>> fieldErrors) {
         super(message);
         this.errorRef = errorRef;
-        this.messages = messages;
-        this.fieldErrors = fieldErrors;
+        this.fieldErrors = fieldErrors == null ? Map.of() : fieldErrors;
     }
 
-    /** Con el ref canonico de la familia y sin detalle por campo. */
+    /** With the family's canonical ref and no per-field detail. */
     public UnprocessableException(String message) {
-        this(REF, message, List.of(), Map.of());
+        this(REF, message, Map.of());
     }
 
     /**
-     * Desde el cuerpo crudo, igual que en 400: son las DOS familias que
-     * el catalogo declara con DetailedErrorView, asi que las dos tienen
-     * detalle por campo que perder si no se parsea.
+     * From the raw body, as in 400: the two families the catalog declares
+     * with DetailedErrorView both have per-field detail to lose if it is
+     * not parsed.
      *
-     * Los records `Message`/`FieldError` de esta clase y los de
-     * `BadRequestException` son tipos DISTINTOS aunque tengan la misma
-     * forma, asi que el mapeo va explicito: convertirlos es de acá y no
-     * del que parsea.
+     * <p>This class's {@code FieldError} and {@code BadRequestException}'s
+     * are DIFFERENT types with the same shape, so the mapping is explicit:
+     * converting them is this class's job, not the parser's.</p>
      */
     public static UnprocessableException fromBody(String errorRef, String rawBody) {
         return new UnprocessableException(
             errorRef,
-            DetailedErrorBody.messageOf(rawBody),
-            DetailedErrorBody.messagesOf(rawBody).stream()
-                .map(m -> new Message(m.code(), m.message(), m.severity()))
-                .toList(),
+            DetailedErrorBody.messageOf(rawBody, REF),
             DetailedErrorBody.fieldErrorsOf(rawBody).entrySet().stream()
                 .collect(java.util.stream.Collectors.toMap(
                     Map.Entry::getKey,
                     e -> e.getValue().stream()
-                        .map(f -> new FieldError(f.code(), f.message(), f.params()))
+                        .map(f -> new FieldError(f.key(), f.message(), f.params()))
                         .toList(),
                     (a, b) -> a,
                     LinkedHashMap::new
@@ -69,15 +61,14 @@ public class UnprocessableException extends IveBusinessException {
         return errorRef;
     }
 
-    public List<Message> messages() {
-        return messages;
-    }
-
+    /** What was wrong in each field; empty when nothing was said per field. */
     public Map<String, List<FieldError>> fieldErrors() {
         return fieldErrors;
     }
 
-    public record Message(String code, String message, String severity) {}
-
-    public record FieldError(String code, String message, Map<String, Object> params) {}
+    /**
+     * One problem of one field (ErrorMessageView): its cause ({@code key}),
+     * its text and the values it was checked against ({@code params}).
+     */
+    public record FieldError(String key, String message, Map<String, Object> params) {}
 }

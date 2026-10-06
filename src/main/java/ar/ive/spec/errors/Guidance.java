@@ -13,7 +13,7 @@ package ar.ive.spec.errors;
  *
  * @param errorRef  the catalog error the cause belongs to (e.g. {@code 401_Unauthorized})
  * @param code      the HTTP code it answers with; {@code null} when nobody declared it
- * @param condition the cause key, the stable identifier that travels in {@code messages[0].code}
+ * @param condition the cause key, the stable identifier that travels as the body's {@code key}
  * @param message   the text the error is raised with
  * @param expects   what whoever receives it has to do; part of the contract
  */

@@ -32,18 +32,18 @@ public abstract class IveBusinessException extends Exception {
 	public abstract String errorRef();
 
     /**
-     * LA CAUSA, cuando quien lanza la sabe.
+     * THE CAUSE, when whoever raises the error knows it.
      *
-     * <p>Es la clave de la `condition` declarada en la especificación
-     * —`credentialExpired`, `stockInsuficiente`— y es lo que viaja en
-     * `messages[0].code` del cuerpo, que es de donde el SDK generado la
-     * lee para decidir sin parsear prosa.</p>
+     * <p>It is the key of the `condition` declared in the specification
+     * -- `credentialExpired`, `stockInsuficiente` -- and it is what travels
+     * as the body's `key`, where the generated SDK reads it to decide
+     * without parsing prose.</p>
      *
-     * <p>NO ES OBLIGATORIA, y por eso es un campo y no un parámetro del
-     * constructor: hay errores que se lanzan sin saber por cuál de las
-     * causas declaradas fue. Un error sin causa sale sin `messages`, que
-     * es lo correcto — <b>adivinarla por el código elegiría una de varias
-     * que esperan cosas distintas</b>.</p>
+     * <p>IT IS NOT MANDATORY, which is why it is a field and not a
+     * constructor parameter: some errors are raised without knowing which
+     * of the declared causes it was. An error without a cause goes out
+     * without `key`, and that is right -- <b>guessing it by the code would
+     * pick one of several causes that expect different things</b>.</p>
      */
     private String condition;
 

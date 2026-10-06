@@ -8,7 +8,7 @@ import ar.ive.spec.core.IveBusinessException;
  * Faltaba, y no era un hueco silencioso: `IveErrorFactory` ya la
  * registraba para el código 406, así que la librería entera no
  * compilaba. El catálogo de plataforma declara `406_NotAcceptable` con
- * StandardErrorView, o sea la forma SIMPLE — las ricas son solo 400 y
+ * ErrorView, o sea la forma SIMPLE — las ricas son solo 400 y
  * 422.
  */
 public class NotAcceptableException extends IveBusinessException {
