@@ -2,6 +2,8 @@ jdk:
   - openjdk21
 before_install:
   - sdk install maven 3.9.9
-  - mvn -v
+  - echo "MAVEN_HOME=$MAVEN_HOME M2_HOME=$M2_HOME MAVEN_OPTS=$MAVEN_OPTS"; which -a mvn; ls -la "$(dirname "$(readlink -f "$(which mvn)")")/../boot" || true
+  - cat /etc/mavenrc /usr/local/etc/mavenrc ~/.mavenrc 2>/dev/null || true
+  - MAVEN_SKIP_RC=true mvn -v
 install:
-  - mvn clean install -DskipTests
+  - MAVEN_SKIP_RC=true mvn clean install -DskipTests
