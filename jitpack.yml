@@ -2,8 +2,9 @@ jdk:
   - openjdk21
 before_install:
   - sdk install maven 3.9.9
-  - echo "MAVEN_HOME=$MAVEN_HOME M2_HOME=$M2_HOME MAVEN_OPTS=$MAVEN_OPTS"; which -a mvn; ls -la "$(dirname "$(readlink -f "$(which mvn)")")/../boot" || true
-  - cat /etc/mavenrc /usr/local/etc/mavenrc ~/.mavenrc 2>/dev/null || true
-  - MAVEN_SKIP_RC=true mvn -v
+  - B="$HOME/.sdkman/candidates/maven/current/boot"; which java; java -version; echo "CDPATH=$CDPATH CLASSPATH=$CLASSPATH JAVA_HOME=$JAVA_HOME"
+  - java -cp "$B/plexus-classworlds-2.8.0.jar" org.codehaus.plexus.classworlds.launcher.Launcher; echo "direct launcher exit=$?"
+  - unzip -l "$B/plexus-classworlds-2.8.0.jar" | grep launcher/Launcher || true
+  - sh -x "$HOME/.sdkman/candidates/maven/current/bin/mvn" -v 2>&1 | tail -40
 install:
-  - MAVEN_SKIP_RC=true mvn clean install -DskipTests
+  - mvn clean install -DskipTests
